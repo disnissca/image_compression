@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using Image = SixLabors.ImageSharp.Image;
@@ -95,7 +96,6 @@ namespace image_compression
         }
         private void Button_Click_2(object sender, RoutedEventArgs e)
         {
-            isch = 1;
             if (string.IsNullOrWhiteSpace(TextBox1.Text))
             {
                 MessageBox.Show("Сначала выберите папку!");
@@ -116,6 +116,7 @@ namespace image_compression
                 return;
             }
             // Очищаем ListBox перед началом работы
+            isch = 1;
             ListBox1.Items.Clear();
 
             // Сжимаем изображения в указанной папке
@@ -134,8 +135,8 @@ namespace image_compression
                 FileInfo fileInfo = new FileInfo(filePath);
                 long originalSize = fileInfo.Length;
 
-                // Проверка размера файла (если меньше 800 КБ, пропускаем)
-                if (originalSize < 800 * 1024)
+                // Пропуск файлов меньше 800 КБ
+                if (originalSize <= 800 * 1024)
                 {
                     //outputListBox.Items.Add($"Пропущен файл: {filePath} - размер меньше 800 КБ.");
                     continue;
@@ -155,25 +156,51 @@ namespace image_compression
 
                         if (format == null)
                         {
-                            outputListBox.Items.Add($"{i}: Пропущен файл с неподдерживаемым форматом: {filePath}");
+                            //outputListBox.Items.Add($"{i}: Пропущен файл с неподдерживаемым форматом: {filePath}");
                             continue;
                         }
 
                         // Сжатие для формата JPEG
                         if (format.DefaultMimeType == "image/jpeg")
                         {
-                            var encoder = new JpegEncoder() { Quality = 5 }; // Максимальное сжатие для JPEG
+                            var encoder = new JpegEncoder()
+                            {
+                                Quality = 5 // Максимально низкое качество для сильного сжатия
+                            };
                             image.Save(tempFilePath, encoder);
                         }
                         // Сжатие для формата PNG
                         else if (format.DefaultMimeType == "image/png")
                         {
-                            var encoder = new PngEncoder() { CompressionLevel = PngCompressionLevel.BestCompression }; // Максимальное сжатие для PNG
+                            var encoder = new PngEncoder
+                            {
+                                CompressionLevel = PngCompressionLevel.BestCompression // Максимальный уровень сжатия
+                            };
                             image.Save(tempFilePath, encoder);
+                        }
+                        // Конвертация BMP в PNG с максимальным сжатием
+                        else if (format.DefaultMimeType == "image/bmp")
+                        {
+                            string pngTempFilePath = Path.Combine(Path.GetDirectoryName(filePath), Path.GetFileNameWithoutExtension(filePath) + ".png");
+                            var encoder = new JpegEncoder()
+                            {
+                                Quality = 90 // Максимально низкое качество для сильного сжатия
+                            };
+                            image.Save(pngTempFilePath, encoder);
+
+                            compressedSize = new FileInfo(pngTempFilePath).Length;
+
+                            outputListBox.Items.Add($"{i}: {pngTempFilePath}");
+                            outputListBox.Items.Add($"Размер до: {originalSize / 1024} КБ");
+                            outputListBox.Items.Add($"Размер после: {compressedSize / 1024} КБ");
+                            outputListBox.Items.Add("---------------------------------------------------");
+                            // Удаляем оригинальный BMP файл после успешной конвертации
+                            File.Delete(filePath);
+                            continue;
                         }
                         else
                         {
-                            outputListBox.Items.Add($"{i}: Пропущен файл с неподдерживаемым форматом: {filePath}");
+                            //outputListBox.Items.Add($"{i}: Пропущен файл с неподдерживаемым форматом: {filePath}");
                             continue;
                         }
 
@@ -188,7 +215,7 @@ namespace image_compression
                         }
                         else
                         {
-                            outputListBox.Items.Add($"{i}: {filePath} - сжатие не дало результата.");
+                            //outputListBox.Items.Add($"{i}: {filePath} - сжатие не дало результата.");
                         }
                     }
 
@@ -196,12 +223,13 @@ namespace image_compression
                 }
                 catch (Exception ex)
                 {
-                    //    outputListBox.Items.Add($"{i}: Ф: {filePath}");
-                    //    outputListBox.Items.Add($"Ошибка: {ex.Message}");
-                    //    outputListBox.Items.Add("---------------------------------------------------");
+                    //outputListBox.Items.Add($"{i}: Ошибка обработки файла: {filePath}");
+                    //outputListBox.Items.Add($"Ошибка: {ex.Message}");
+                    //outputListBox.Items.Add("---------------------------------------------------");
                 }
             }
         }
+
 
     }
 
