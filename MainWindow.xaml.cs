@@ -22,6 +22,8 @@ namespace image_compression
             ListBox1.Items.Clear();
             befor_ch.Clear();
             after_ch.Clear();
+
+            Button2.IsEnabled = false;
         }
 
         List<string> befor_ch = new List<string>();
@@ -59,12 +61,14 @@ namespace image_compression
 
                 // Ищем файлы больше 800 КБ
                 var largeFiles = GetLargeFiles(path, 800 * 1024); // 800 KB в байтах
-
+                
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Не выбран путь");
             }
+            //Button1.IsEnabled = false;
+            Button2.IsEnabled = true;
         }
         private List<string> GetLargeFiles(string directoryPath, long minSize)
         {
@@ -122,114 +126,148 @@ namespace image_compression
             // Сжимаем изображения в указанной папке
             CompressImagesInFolder(folderPath, ListBox1);
 
-            MessageBox.Show("Сжатие завершено!");
+            //MessageBox.Show("Сжатие завершено!");
         }
 
-        private void CompressImagesInFolder(string folderPath, ListBox outputListBox)
+        private async void CompressImagesInFolder(string folderPath, ListBox outputListBox)
         {
-            string[] files = Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories);
+            Button1.IsEnabled = false;
+            Button2.IsEnabled = false;
             int i = 0;
+            string[] files = Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories);
 
-            foreach (string filePath in files)
+            await Task.Run(() =>
             {
-                FileInfo fileInfo = new FileInfo(filePath);
-                long originalSize = fileInfo.Length;
-
-                // Пропуск файлов меньше 800 КБ
-                if (originalSize <= 800 * 1024)
+                foreach (string filePath in files)
                 {
-                    //outputListBox.Items.Add($"Пропущен файл: {filePath} - размер меньше 800 КБ.");
-                    continue;
-                }
+                    FileInfo fileInfo = new FileInfo(filePath);
+                    long originalSize = fileInfo.Length;
 
-                long compressedSize = 0;
+                    // Пропуск файлов меньше 800 КБ
+                    if (originalSize <= 800 * 1024)
+                        continue;
 
-                try
-                {
-                    i++;
-                    string tempFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(filePath));
-
-                    using (var image = Image.Load(filePath))
+                    try
                     {
-                        // Определяем формат изображения
-                        var format = SixLabors.ImageSharp.Image.DetectFormat(filePath);
+                        i++;
+                        string tempFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(filePath));
 
-                        if (format == null)
+                        using (var image = Image.Load(filePath))
                         {
-                            //outputListBox.Items.Add($"{i}: Пропущен файл с неподдерживаемым форматом: {filePath}");
-                            continue;
-                        }
+                            // Определяем формат изображения
+                            var format = SixLabors.ImageSharp.Image.DetectFormat(filePath);
 
-                        // Сжатие для формата JPEG
-                        if (format.DefaultMimeType == "image/jpeg")
-                        {
-                            var encoder = new JpegEncoder()
+                            if (format == null)
+                                continue;
+
+                            // Сжатие для формата JPEG
+                            if (format.DefaultMimeType == "image/jpeg")
                             {
-                                Quality = 5 // Максимально низкое качество для сильного сжатия
-                            };
-                            image.Save(tempFilePath, encoder);
-                        }
-                        // Сжатие для формата PNG
-                        else if (format.DefaultMimeType == "image/png")
-                        {
-                            var encoder = new PngEncoder
+                                var encoder = new JpegEncoder() { Quality = 5 };
+                                image.Save(tempFilePath, encoder);
+                            }
+                            // Сжатие для формата PNG
+                            else if (format.DefaultMimeType == "image/png")
                             {
-                                CompressionLevel = PngCompressionLevel.BestCompression // Максимальный уровень сжатия
-                            };
-                            image.Save(tempFilePath, encoder);
-                        }
-                        // Конвертация BMP в PNG с максимальным сжатием
-                        else if (format.DefaultMimeType == "image/bmp")
-                        {
-                            string pngTempFilePath = Path.Combine(Path.GetDirectoryName(filePath), Path.GetFileNameWithoutExtension(filePath) + ".png");
-                            var encoder = new JpegEncoder()
+                                var encoder = new PngEncoder { CompressionLevel = PngCompressionLevel.BestCompression };
+                                image.Save(tempFilePath, encoder);
+                            }
+                            // Конвертация BMP в PNG
+                            else if (format.DefaultMimeType == "image/bmp")
                             {
-                                Quality = 90 // Максимально низкое качество для сильного сжатия
-                            };
-                            image.Save(pngTempFilePath, encoder);
+                                var encoder = new JpegEncoder()
+                                {
+                                    Quality = 5 // Уровень качества JPEG
+                                };
 
-                            compressedSize = new FileInfo(pngTempFilePath).Length;
+                                // Временный файл для сжатия
+                                string bmpTempFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(filePath));
+                                image.Save(bmpTempFilePath, encoder);
 
-                            outputListBox.Items.Add($"{i}: {pngTempFilePath}");
-                            outputListBox.Items.Add($"Размер до: {originalSize / 1024} КБ");
-                            outputListBox.Items.Add($"Размер после: {compressedSize / 1024} КБ");
-                            outputListBox.Items.Add("---------------------------------------------------");
-                            // Удаляем оригинальный BMP файл после успешной конвертации
-                            File.Delete(filePath);
-                            continue;
-                        }
-                        else
-                        {
-                            //outputListBox.Items.Add($"{i}: Пропущен файл с неподдерживаемым форматом: {filePath}");
-                            continue;
-                        }
+                                long bmpCompressedSize = new FileInfo(bmpTempFilePath).Length; // Переименовано для исключения конфликта
 
-                        compressedSize = new FileInfo(tempFilePath).Length;
+                                Application.Current.Dispatcher.Invoke(() =>
+                                {
+                                    outputListBox.Items.Add($"{i}: {filePath}");
+                                    outputListBox.Items.Add($"Размер до: {originalSize / 1024} КБ");
+                                    outputListBox.Items.Add($"Размер после: {bmpCompressedSize / 1024} КБ");
+                                    outputListBox.Items.Add("---------------------------------------------------");
+                                });
 
-                        if (compressedSize < originalSize)
-                        {
-                            File.Copy(tempFilePath, filePath, true); // Заменить оригинал на сжатый
-                            outputListBox.Items.Add($"{i}: {filePath}");
-                            outputListBox.Items.Add($"Размер до: {originalSize / 1024} КБ");
-                            outputListBox.Items.Add($"Размер после: {compressedSize / 1024} КБ");
-                        }
-                        else
-                        {
-                            //outputListBox.Items.Add($"{i}: {filePath} - сжатие не дало результата.");
+                                // Заменяем оригинальный BMP файл на сжатый JPEG
+                                File.Copy(bmpTempFilePath, filePath, true); // true позволяет перезаписать файл
+                                File.Delete(bmpTempFilePath); // Удаляем временный файл
+                                continue;
+                            }
+                            else if (format.DefaultMimeType == "image/tiff")
+                            {
+                                var encoder = new JpegEncoder()
+                                {
+                                    Quality = 70 // Уровень качества JPEG
+                                };
+
+                                // Временный файл для сжатия
+                                string bmpTempFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(filePath));
+                                image.Save(bmpTempFilePath, encoder);
+
+                                long bmpCompressedSize = new FileInfo(bmpTempFilePath).Length; // Переименовано для исключения конфликта
+
+                                Application.Current.Dispatcher.Invoke(() =>
+                                {
+                                    outputListBox.Items.Add($"{i}: {filePath}");
+                                    outputListBox.Items.Add($"Размер до: {originalSize / 1024} КБ");
+                                    outputListBox.Items.Add($"Размер после: {bmpCompressedSize / 1024} КБ");
+                                    outputListBox.Items.Add("---------------------------------------------------");
+                                });
+
+                                // Заменяем оригинальный BMP файл на сжатый JPEG
+                                File.Copy(bmpTempFilePath, filePath, true); // true позволяет перезаписать файл
+                                File.Delete(bmpTempFilePath); // Удаляем временный файл
+                                continue;
+                            }
+
+
+
+
+
+                            else
+                                continue;
+
+                            long compressedSize = new FileInfo(tempFilePath).Length;
+
+                            if (compressedSize < originalSize)
+                            {
+                                File.Copy(tempFilePath, filePath, true); // Заменяем оригинал на сжатый
+                                Application.Current.Dispatcher.Invoke(() =>
+                                {
+                                    outputListBox.Items.Add($"{i}: {filePath}");
+                                    outputListBox.Items.Add($"Размер до: {originalSize / 1024} КБ");
+                                    outputListBox.Items.Add($"Размер после: {compressedSize / 1024} КБ");
+                                });
+                            }
+
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                outputListBox.Items.Add("---------------------------------------------------");
+                            });
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            outputListBox.Items.Add($"{i}: Ошибка обработки файла: {filePath}");
+                            outputListBox.Items.Add($"Ошибка: {ex.Message}");
+                            outputListBox.Items.Add("---------------------------------------------------");
+                        });
+                    }
+                }
+            });
 
-                    outputListBox.Items.Add("---------------------------------------------------");
-                }
-                catch (Exception ex)
-                {
-                    //outputListBox.Items.Add($"{i}: Ошибка обработки файла: {filePath}");
-                    //outputListBox.Items.Add($"Ошибка: {ex.Message}");
-                    //outputListBox.Items.Add("---------------------------------------------------");
-                }
-            }
+            MessageBox.Show($"Всего обработалось - {i}");
+            Button1.IsEnabled = true;
+            Button2.IsEnabled = false;
         }
-
 
     }
 
