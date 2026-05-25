@@ -52,9 +52,9 @@
                 </Style>
             </ListBox.ItemContainerStyle>
         </ListBox>
-        <Button x:Name="Button1_Копировать" Content="Очистить пути" 
+        <Button x:Name="Button3" Content="Очистить пути" 
             HorizontalAlignment="Left" VerticalAlignment="Top" 
             Margin="129,5,0,0" Width="94" Height="26" 
-            Click="Button_Click" Grid.Column="1" Grid.Row="0" Grid.RowSpan="3"/>
+            Click="Button3_Click" Grid.Column="1" Grid.Row="0" Grid.RowSpan="3"/>
     </Grid>
 </Window>

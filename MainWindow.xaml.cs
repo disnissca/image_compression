@@ -62,6 +62,11 @@ namespace image_compression
         List<string> largeFiles = new List<string>();
         //string[] after_ch = [];
         int isch = 0;
+        private void Button3_Click(object sender, RoutedEventArgs e)
+        {
+            ListBox1.Items.Clear();
+            ListBox2.Items.Clear();
+        }
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             isch = 0;
@@ -457,7 +462,7 @@ namespace image_compression
         //                                File.AppendAllText("Log_image_compression.txt", $"{i}: {filePath}" + "\r\n");
         //                                File.AppendAllText("Log_image_compression.txt", $"Размер до: {originalSize / 1024} КБ" + "\r\n");
         //                                File.AppendAllText("Log_image_compression.txt", $"Размер после: {compressedSize / 1024} КБ" + "\r\n");
-                                        
+
         //                            });
         //                        }
 
