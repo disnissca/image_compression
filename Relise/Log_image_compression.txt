@@ -1,0 +1,24 @@
+Найденные файлы:
+1: D:\С#\фф\aktualno-instrukciya-po-peremeshheniyu-alkogolya-mezdu-magazinami-odnogo-yur-lica (2) (2703,58 КБ);
+Найденные файлы:
+2: D:\С#\фф\instrukciya-inventarizaciya-pomarocnogo-alkogolya-27012023 (1) (2687,68 КБ);
+Найденные файлы:
+3: D:\С#\фф\peremarkirovka-tovarov-v-cz (1) (1604,81 КБ);
+---------------------------------------------------
+1: D:\С#\фф\aktualno-instrukciya-po-peremeshheniyu-alkogolya-mezdu-magazinami-odnogo-yur-lica (2)
+Размер до: 2703 КБ
+Размер после: 2644 КБ
+---------------------------------------------------
+2: D:\С#\фф\instrukciya-inventarizaciya-pomarocnogo-alkogolya-27012023 (1)
+Размер до: 2687 КБ
+Размер после: 1439 КБ
+---------------------------------------------------
+3: D:\С#\фф\peremarkirovka-tovarov-v-cz (1)
+Размер до: 1604 КБ
+Размер после: 803 КБ
+---------------------------------------------------
+4: D:\С#\фф\vesy-shtrikh-print-m-pervonachalnaya-nastroyka
+Размер до: 1929 КБ
+Размер после: 747 КБ
+---------------------------------------------------
+Всего обработалось - 4
