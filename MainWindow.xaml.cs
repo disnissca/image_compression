@@ -129,11 +129,11 @@ namespace image_compression
             }
             //Button1.IsEnabled = false;
             //Button2.IsEnabled = true;
-            File.AppendAllText("Log_image_compression.txt", "---------------------------------------------------" + "\r\n");
+            //File.AppendAllText("Log_image_compression.txt", "---------------------------------------------------" + "\r\n");
         }
         private List<string> GetLargeFiles(string directoryPath, long minSize)
         {
-            File.WriteAllText("Log_image_compression.txt", string.Empty); //Открытие файла и полностью его очистить. Если файла нет, то создаст
+            //File.WriteAllText("Log_image_compression.txt", string.Empty); //Открытие файла и полностью его очистить. Если файла нет, то создаст
             //List<string> largeFiles = new List<string>();
             int i = 0;
             if (Directory.Exists(directoryPath))
@@ -149,8 +149,8 @@ namespace image_compression
                         i++;
                         largeFiles.Add(file);  // Добавляем файл в список, если его размер больше 800 КБ
                         ListBox3.Items.Add($"{i}: {fileInfo.FullName} ({fileInfo.Length / (1024.0):F2} КБ);");
-                        File.AppendAllText("Log_image_compression.txt", "Найденные файлы:" + "\r\n");
-                        File.AppendAllText("Log_image_compression.txt", $"{i}: {fileInfo.FullName} ({fileInfo.Length / (1024.0):F2} КБ);" + "\r\n");
+                        //File.AppendAllText("Log_image_compression.txt", "Найденные файлы:" + "\r\n");
+                        //File.AppendAllText("Log_image_compression.txt", $"{i}: {fileInfo.FullName} ({fileInfo.Length / (1024.0):F2} КБ);" + "\r\n");
                         //ListBox1.Items.Add($"Размер - {fileInfo.Length / (1024.0):F2} КБ");
                     }
                 }
