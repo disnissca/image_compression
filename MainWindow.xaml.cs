@@ -147,7 +147,6 @@ namespace image_compression
                     if (fileInfo.Length > minSize)
                     {
                         i++;
-                        kon++;
                         largeFiles.Add(file);  // Добавляем файл в список, если его размер больше 800 КБ
                         ListBox3.Items.Add($"{i}: {fileInfo.FullName} ({fileInfo.Length / (1024.0):F2} КБ);");
                         File.AppendAllText("Log_image_compression.txt", "Найденные файлы:" + "\r\n");
@@ -163,412 +162,420 @@ namespace image_compression
 
             return largeFiles;
         }
-        private void Button_Click_2(object sender, RoutedEventArgs e)
+        private async void Button_Click_2(object sender, RoutedEventArgs e)
         {
-            string path = @"pdfium.dll"; //Расположение файла с указанием папок бекапа
-            bool fileExist = File.Exists(path); //Запись пути нахождение файла с указанием папок бекапа
-            if (!fileExist)
+            string path = @"pdfium.dll";
+
+            if (!File.Exists(path))
             {
-                MessageBox.Show("Файла: pdfium.dll нет в папке с программой");
+                MessageBox.Show("Файла pdfium.dll нет");
                 return;
             }
-            //if (string.IsNullOrWhiteSpace(TextBox1.Text))
-            //{
-            //    MessageBox.Show("Сначала выберите папку!");
-            //    return;
-            //}
+
             if (ListBox2.Items.Count == 0)
             {
                 MessageBox.Show("Список путей пуст");
                 return;
             }
-            //string folderPath = TextBox1.Text;
 
-            //if (!Directory.Exists(folderPath))
-            //{
-            //    MessageBox.Show("Указанная папка не существует!");
-            //    return;
-            //}
+            Button1.IsEnabled = false;
 
-            //if (isch == 1)
-            //{
-            //    MessageBox.Show("Сначала выберите папку!");
-            //    return;
-            //}
-            //isch = 1;
+            blok_SelectionChanged = true;
 
-            blok_SelectionChanged = true; //выполнение сжатия
-            for (int i = 0; i < ListBox2.Items.Count; i++)
+            kon = 0;
+
+            try
             {
-                ListBox3.Items.Clear();
-                // Выделяем текущую строку
-                ListBox2.SelectedIndex = i;
-                // Автоскролл до элемента
-                ListBox2.ScrollIntoView(ListBox2.Items[i]);
-
-                // Получаем выбранный объект
-                var folderPath = ListBox2.SelectedItem;
-
-                string path1 = folderPath + "\\";
-                // Ищем файлы больше 800 КБ
-                var largeFiles = GetLargeFiles(path1, 800 * 1024); // 800 KB в байтах
-
-                for (int j = 0; j < ListBox3.Items.Count; j++)
+                for (int i = 0; i < ListBox2.Items.Count; i++)
                 {
-                    // Выделяем текущую строку
-                    ListBox3.SelectedIndex = j;
-                    // Автоскролл до элемента
-                    ListBox3.ScrollIntoView(ListBox3.Items[j]);
-                    // Получаем выбранный объект
-                    var folderPath1 = ListBox2.SelectedItem;
-                    string parrr = folderPath1 + "\\";
-                    CompressImagesInFolder(parrr, ListBox1);
+                    ListBox2.SelectedIndex = i;
+                    ListBox2.ScrollIntoView(ListBox2.Items[i]);
 
+                    string folderPath = ListBox2.Items[i].ToString();
+
+                    ListBox3.Items.Clear();
+
+                    largeFiles.Clear();
+
+                    GetLargeFiles(folderPath, 800 * 1024);
+
+                    // ОБРАБОТКА ФАЙЛОВ ПО ОЧЕРЕДИ
+                    foreach (string filePath in largeFiles)
+                    {
+                        await CompressImagesInFolder(filePath, ListBox1);
+                    }
+
+                    ListBox1.Items.Add(
+                        "=================================");
                 }
 
-
-
-
-
-
-
-
-                    //// Получаем строку
-                    //string folderPath = ListBox2.Items[i].ToString();
-
-                
-                ListBox1.Items.Add("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                MessageBox.Show($"Всего обработано: {kon}");
             }
-            // Сжимаем изображения в указанной папке
-
-            //MessageBox.Show("Сжатие завершено!");
-            MessageBox.Show($"Всего обработалось - {kon}");
-            File.AppendAllText("Log_image_compression.txt", $"Всего обработалось - {kon}" + "\r\n");
-            Button1.IsEnabled = true;
-            blok_SelectionChanged = false; //окончание сжатия
+            finally
+            {
+                Button1.IsEnabled = true;
+                blok_SelectionChanged = false;
+            }
         }
 
-        private async void CompressImagesInFolder(string folderPath, ListBox outputListBox)
+        private async Task CompressImagesInFolder(string filePath, ListBox outputListBox)
         {
-            
-            //Button1.IsEnabled = false;
-            //Button2.IsEnabled = false;
-            int i = 0;
-            string[] files = Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories);
-
             await Task.Run(() =>
             {
-                //MessageBox.Show("0.1");
-                foreach (string filePath in files)
+                try
                 {
-                    //MessageBox.Show("0.2");
                     FileInfo fileInfo = new FileInfo(filePath);
+
+                    if (!fileInfo.Exists)
+                        return;
+
                     long originalSize = fileInfo.Length;
-                    //MessageBox.Show("0.3");
-                    // Пропуск файлов меньше 800 КБ
+
+                    // Пропуск маленьких файлов
                     if (originalSize <= 800 * 1024)
-                        continue;
-                    //MessageBox.Show("0.4");
+                        return;
+
+                    bool isPdf = false;
+
+                    // =========================
+                    // Проверка PDF
+                    // =========================
                     try
                     {
-                        //bool isImage = false;
-                        bool isPdf = false;
-                        //MessageBox.Show("0.5");
-                        //MessageBox.Show($"1122221Файл: {filePath}");
-                        // Проверка для PDF
-                        try
+                        byte[] header = new byte[4];
+
+                        using (FileStream fs = new FileStream(
+                            filePath,
+                            FileMode.Open,
+                            FileAccess.Read))
                         {
-                            //MessageBox.Show("3");
-                            // Чтение первых 4 байтов файла
-                            byte[] header = new byte[4];
-                            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+                            int bytesRead = fs.Read(header, 0, 4);
+
+                            if (bytesRead == 4)
                             {
-                                int bytesRead = fs.Read(header, 0, 4); // Читаем первые 4 байта
-                                if (bytesRead < 4)
+                                string headerStr =
+                                    Encoding.ASCII.GetString(header);
+
+                                if (headerStr.StartsWith("%PDF"))
                                 {
-                                    //MessageBox.Show("Файл слишком маленький для проверки на PDF.");
-                                    return;
+                                    isPdf = true;
                                 }
                             }
-                            //MessageBox.Show("4");
-                            // Преобразуем байты в строку (ASCII)
-                            string headerStr = Encoding.ASCII.GetString(header);
+                        }
+                    }
+                    catch
+                    {
+                        return;
+                    }
 
-                            // Диагностика: выводим байты и строку
-                            string byteRepresentation = string.Join(" ", header.Select(b => $"0x{b:X2}"));
-                            //MessageBox.Show($"Первые байты: {byteRepresentation}");
-                            //MessageBox.Show($"Строка из байтов: {headerStr}");
+                    // =====================================================
+                    // PDF
+                    // =====================================================
+                    if (isPdf)
+                    {
+                        try
+                        {
+                            string fileDirectory =
+                                Path.GetDirectoryName(filePath);
 
-                            // Проверка на PDF
-                            if (headerStr.StartsWith("%PDF"))
+                            string tempFolder =
+                                Path.Combine(
+                                    fileDirectory,
+                                    "TempImages_" + Guid.NewGuid());
+
+                            Directory.CreateDirectory(tempFolder);
+
+                            List<string> imagePaths =
+                                new List<string>();
+
+                            // ======================================
+                            // PDF -> JPG
+                            // ======================================
+                            using (var pdfDoc =
+                                   PdfiumViewer.PdfDocument.Load(filePath))
                             {
-                                isPdf = true;
-                                //Application.Current.Dispatcher.Invoke(() =>
-                                //{
-                                //    outputListBox.Items.Add($"Это PDF файл: {filePath}");
-                                //});
+                                for (int pageIndex = 0;
+                                     pageIndex < pdfDoc.PageCount;
+                                     pageIndex++)
+                                {
+                                    string outputImagePath =
+                                        Path.Combine(
+                                            tempFolder,
+                                            $"Page_{pageIndex + 1}.jpg");
+
+                                    using (var bitmap =
+                                           pdfDoc.Render(
+                                               pageIndex,
+                                               1200,
+                                               1200,
+                                               true))
+                                    {
+                                        bitmap.Save(
+                                            outputImagePath,
+                                            System.Drawing.Imaging
+                                                .ImageFormat.Jpeg);
+
+                                        imagePaths.Add(outputImagePath);
+                                    }
+                                }
+                            }
+
+                            // ======================================
+                            // Сжатие JPG
+                            // ======================================
+                            foreach (string imagePath in imagePaths)
+                            {
+                                using (var image =
+                                       SixLabors.ImageSharp.Image.Load(imagePath))
+                                {
+                                    image.Mutate(x =>
+                                        x.Resize(
+                                            new ResizeOptions
+                                            {
+                                                Mode = SixLabors.ImageSharp.Processing.ResizeMode.Stretch,
+                                                Size = new Size(800, 800)
+                                            }));
+
+                                    var encoder =
+                                        new JpegEncoder()
+                                        {
+                                            Quality = 90
+                                        };
+
+                                    image.Save(imagePath, encoder);
+                                }
+                            }
+
+                            // ======================================
+                            // Сборка PDF
+                            // ======================================
+                            string compressedPdfPath =
+                                Path.Combine(
+                                    fileDirectory,
+                                    "Compressed_" +
+                                    Path.GetFileName(filePath));
+
+                            using (var writer =
+                                   new PdfWriter(compressedPdfPath))
+
+                            using (var pdfDoc =
+                                   new PdfDocument(writer))
+                            {
+                                foreach (string imagePath in imagePaths)
+                                {
+                                    byte[] imageBytes =
+                                        File.ReadAllBytes(imagePath);
+
+                                    var imageData =
+                                        iText.IO.Image.ImageDataFactory
+                                            .Create(imageBytes);
+
+                                    var pageSize =
+                                        new iText.Kernel.Geom.PageSize(
+                                            imageData.GetWidth(),
+                                            imageData.GetHeight());
+
+                                    var page =
+                                        pdfDoc.AddNewPage(pageSize);
+
+                                    var pdfCanvas =
+                                        new PdfCanvas(page);
+
+                                    pdfCanvas.AddImage(
+                                        imageData,
+                                        0,
+                                        0,
+                                        false);
+                                }
+                            }
+
+                            long compressedPdfSize =
+                                new FileInfo(compressedPdfPath).Length;
+
+                            // ======================================
+                            // Замена файла
+                            // ======================================
+                            if (compressedPdfSize < originalSize)
+                            {
+                                File.Delete(filePath);
+
+                                File.Move(
+                                    compressedPdfPath,
+                                    filePath);
+
+                                int currentNumber =
+                                    Interlocked.Increment(ref kon);
+
+
+                                Application.Current.Dispatcher.Invoke(() =>
+                                {
+                                    
+                                    outputListBox.Items.Add($"{currentNumber}:{currentNumber}. {filePath}");
+
+                                    outputListBox.Items.Add($"Размер до: {originalSize / 1024} КБ");
+
+                                    outputListBox.Items.Add($"Размер после: {compressedPdfSize / 1024} КБ");
+
+                                    outputListBox.Items.Add("---------------------------------------------------");
+                                });
                             }
                             else
                             {
-                                //Application.Current.Dispatcher.Invoke(() =>
-                                //{
-                                //    outputListBox.Items.Add($"Это не PDF. Начало файла: {headerStr}");
-                                //});
+                                File.Delete(compressedPdfPath);
                             }
-                            //MessageBox.Show("5");
+
+                            // Удаление temp
+                            if (Directory.Exists(tempFolder))
+                            {
+                                Directory.Delete(tempFolder, true);
+                            }
                         }
                         catch (Exception ex)
                         {
-                            MessageBox.Show("Ошибка");
                             Application.Current.Dispatcher.Invoke(() =>
                             {
-                                //outputListBox.Items.Add($"Ошибка при проверке файла: {ex.Message}. Файл: {filePath}");
+                                outputListBox.Items.Add(
+                                    $"Ошибка PDF:");
+
+                                outputListBox.Items.Add(filePath);
+
+                                outputListBox.Items.Add(ex.Message);
+
+                                outputListBox.Items.Add("---------------------------------------------------");
                             });
                         }
-                        //MessageBox.Show("Конец");
-                        if (isPdf) // Проверка, является ли файл PDF
+                    }
+
+                    // =====================================================
+                    // IMAGE
+                    // =====================================================
+                    else
+                    {
+                        try
                         {
-                            try
-                            {
-                                // 1. Получаем путь к папке, где находится исходный файл
-                                string fileDirectory = Path.GetDirectoryName(filePath);
-
-                                // 2. Создание временной папки для хранения изображений
-                                string tempFolder = Path.Combine(fileDirectory, "TempImages"); // Папка для изображений рядом с исходным файлом
-                                Directory.CreateDirectory(tempFolder);  // Создаем папку, если ее нет
-
-                                // 3. Конвертация страниц PDF в изображения
-                                List<string> imagePaths = new List<string>();  // Список для хранения путей к изображениям
-                                using (var pdfDoc = PdfiumViewer.PdfDocument.Load(filePath))  // Загружаем PDF документ с помощью библиотеки Pdfium
-                                {
-                                    // Проходим по каждой странице в PDF
-                                    for (int pageIndex = 0; pageIndex < pdfDoc.PageCount; pageIndex++)
-                                    {
-                                        // Формируем путь для сохранения изображения страницы
-                                        string outputImagePath = Path.Combine(tempFolder, $"Page_{pageIndex + 1}.jpg");
-
-                                        // Рендерим страницу в изображение с разрешением 300 DPI
-                                        using (var bitmap = pdfDoc.Render(pageIndex, 1200, 1200, true)) // Отрисовка страницы в Bitmap (картинка)
-                                        {
-                                            bitmap.Save(outputImagePath, System.Drawing.Imaging.ImageFormat.Jpeg);  // Сохраняем картинку как JPEG
-                                            imagePaths.Add(outputImagePath);  // Добавляем путь изображения в список
-                                        }
-                                    }
-                                }
-
-                                // 4. Сжатие изображений
-                                foreach (var imagePath in imagePaths)  // Для каждого изображения в списке
-                                {
-                                    using (var image = SixLabors.ImageSharp.Image.Load(imagePath))  // Загружаем изображение с помощью библиотеки ImageSharp
-                                    {
-                                        // Изменяем размер изображения до 800x800 пикселей с сохранением пропорций
-                                        image.Mutate(x => x.Resize(new SixLabors.ImageSharp.Processing.ResizeOptions
-                                        {
-                                            Mode = SixLabors.ImageSharp.Processing.ResizeMode.Max,  // Максимальное изменение размера
-                                            Size = new SixLabors.ImageSharp.Size(800, 800)  // Устанавливаем максимальный размер 800x800
-                                        }));
-
-                                        // Применяем сильное сжатие (качество 70%)
-                                        var encoder = new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 90 }; // Настройка сжатия JPEG
-                                        image.Save(imagePath, encoder);  // Перезаписываем изображение с сжатием
-                                    }
-                                }
-
-                                // 5. Сборка изображений обратно в PDF
-                                string compressedPdfPath = Path.Combine(fileDirectory, "Compressed_" + Path.GetFileName(filePath));  // Путь для сжатого PDF
-                                using (var writer = new iText.Kernel.Pdf.PdfWriter(compressedPdfPath))  // Открываем новый файл PDF для записи
-                                using (var pdfDoc = new iText.Kernel.Pdf.PdfDocument(writer))  // Создаем новый PDF документ
-                                {
-                                    foreach (var imagePath in imagePaths)  // Для каждого изображения в списке
-                                    {
-                                        byte[] imageBytes = File.ReadAllBytes(imagePath);  // Читаем данные изображения в байтовый массив
-                                        var imageData = iText.IO.Image.ImageDataFactory.Create(imageBytes);  // Создаем объект изображения для PDF
-
-                                        var pageSize = new iText.Kernel.Geom.PageSize(imageData.GetWidth(), imageData.GetHeight());  // Создаем страницу с размерами, соответствующими изображению
-                                        var page = pdfDoc.AddNewPage(pageSize);  // Добавляем новую страницу с нужными размерами
-
-                                        var pdfCanvas = new iText.Kernel.Pdf.Canvas.PdfCanvas(page);  // Получаем холст для рисования на странице
-                                        pdfCanvas.AddImage(imageData, 0, 0, false);  // Добавляем изображение на страницу
-                                    }
-                                }
-
-                                // 6. Проверка на уменьшение размера PDF
-                                long compressedPdfSize = new FileInfo(compressedPdfPath).Length;  // Получаем размер сжатого PDF
-                                long originalPdfSize = new FileInfo(filePath).Length;  // Получаем размер оригинального PDF
-
-                                if (compressedPdfSize < originalPdfSize)  // Если размер сжатого PDF меньше оригинала
-                                {
-                                    File.Copy(compressedPdfPath, filePath, true);  // Заменяем оригинальный файл на сжатый
-                                    Application.Current.Dispatcher.Invoke(() =>
-                                    {
-                                        i++;  // Увеличиваем счетчик
-                                        kon++;
-                                        outputListBox.Items.Add($"{i}: {filePath}");  // Добавляем информацию о процессе в ListBox
-                                        outputListBox.Items.Add($"Размер до: {originalPdfSize / 1024} КБ");  // Показываем размер до сжатия
-                                        outputListBox.Items.Add($"Размер после: {compressedPdfSize / 1024} КБ");  // Показываем размер после сжатия
-                                        outputListBox.Items.Add("---------------------------------------------------");  // Разделительная линия
-                                        File.AppendAllText("Log_image_compression.txt", $"{i}: {filePath}" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", $"Размер до: {originalPdfSize / 1024} КБ" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", $"Размер после: {compressedPdfSize / 1024} КБ" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", "---------------------------------------------------" + "\r\n");
-                                    });
-                                }
-
-                                Directory.Delete(tempFolder, true);
-                                File.Delete(filePath);
-                                File.Move(compressedPdfPath, filePath);
-
-                            }
-                            catch (Exception ex)  // Обработка ошибок
-                            {
-                                Application.Current.Dispatcher.Invoke(() =>
-                                {
-                                    outputListBox.Items.Add($"Ошибка при обработке PDF: {ex.Message}. Файл: {filePath}");  // Выводим сообщение об ошибке
-                                    File.AppendAllText("Log_image_compression.txt", $"Ошибка при обработке PDF: {ex.Message}. Файл: {filePath}");
-                                });
-                            }
-                        }
-
-
-                        else
-                        {
-                            i++;
-                            kon++;
-                            string tempFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(filePath));
+                            string tempFilePath =
+                                Path.Combine(
+                                    Path.GetTempPath(),
+                                    Guid.NewGuid() +
+                                    Path.GetExtension(filePath));
 
                             using (var image = Image.Load(filePath))
                             {
-                                // Определяем формат изображения
-                                var format = SixLabors.ImageSharp.Image.DetectFormat(filePath);
+                                var format =
+                                    Image.DetectFormat(filePath);
 
                                 if (format == null)
-                                    continue;
+                                    return;
 
-                                // Сжатие для формата JPEG
+                                // JPG
                                 if (format.DefaultMimeType == "image/jpeg")
                                 {
-                                    var encoder = new JpegEncoder() { Quality = 5 };
+                                    var encoder =
+                                        new JpegEncoder()
+                                        {
+                                            Quality = 5
+                                        };
+
                                     image.Save(tempFilePath, encoder);
                                 }
-                                // Сжатие для формата PNG
-                                else if (format.DefaultMimeType == "image/png")
+
+                                // PNG
+                                else if (
+                                    format.DefaultMimeType == "image/png")
                                 {
-                                    var encoder = new PngEncoder { CompressionLevel = PngCompressionLevel.BestCompression };
+                                    var encoder =
+                                        new PngEncoder()
+                                        {
+                                            CompressionLevel =
+                                                PngCompressionLevel
+                                                    .BestCompression
+                                        };
+
                                     image.Save(tempFilePath, encoder);
                                 }
-                                // Конвертация BMP в PNG
-                                else if (format.DefaultMimeType == "image/bmp")
+
+                                // BMP/TIFF
+                                else if (
+                                    format.DefaultMimeType == "image/bmp" ||
+                                    format.DefaultMimeType == "image/tiff")
                                 {
-                                    var encoder = new JpegEncoder()
-                                    {
-                                        Quality = 5 // Уровень качества JPEG
-                                    };
+                                    var encoder =
+                                        new JpegEncoder()
+                                        {
+                                            Quality = 70
+                                        };
 
-                                    // Временный файл для сжатия
-                                    string bmpTempFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(filePath));
-                                    image.Save(bmpTempFilePath, encoder);
-
-                                    long bmpCompressedSize = new FileInfo(bmpTempFilePath).Length; // Переименовано для исключения конфликта
-
-                                    Application.Current.Dispatcher.Invoke(() =>
-                                    {
-                                        outputListBox.Items.Add($"{i}: {filePath}");
-                                        outputListBox.Items.Add($"Размер до: {originalSize / 1024} КБ");
-                                        outputListBox.Items.Add($"Размер после: {bmpCompressedSize / 1024} КБ");
-                                        outputListBox.Items.Add("---------------------------------------------------");
-                                        File.AppendAllText("Log_image_compression.txt", $"{i}: {filePath}" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", $"Размер до: {originalSize / 1024} КБ" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", $"Размер после: {bmpCompressedSize / 1024} КБ" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", "---------------------------------------------------" + "\r\n");
-                                    });
-
-                                    // Заменяем оригинальный BMP файл на сжатый JPEG
-                                    File.Copy(bmpTempFilePath, filePath, true); // true позволяет перезаписать файл
-                                    File.Delete(bmpTempFilePath); // Удаляем временный файл
-                                    continue;
+                                    image.Save(tempFilePath, encoder);
                                 }
-                                else if (format.DefaultMimeType == "image/tiff")
-                                {
-                                    var encoder = new JpegEncoder()
-                                    {
-                                        Quality = 70 // Уровень качества JPEG
-                                    };
-
-                                    // Временный файл для сжатия
-                                    string bmpTempFilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(filePath));
-                                    image.Save(bmpTempFilePath, encoder);
-
-                                    long bmpCompressedSize = new FileInfo(bmpTempFilePath).Length; // Переименовано для исключения конфликта
-
-                                    Application.Current.Dispatcher.Invoke(() =>
-                                    {
-                                        outputListBox.Items.Add($"{i}: {filePath}");
-                                        outputListBox.Items.Add($"Размер до: {originalSize / 1024} КБ");
-                                        outputListBox.Items.Add($"Размер после: {bmpCompressedSize / 1024} КБ");
-                                        outputListBox.Items.Add("---------------------------------------------------");
-                                        File.AppendAllText("Log_image_compression.txt", $"{i}: {filePath}" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", $"Размер до: {originalSize / 1024} КБ" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", $"Размер после: {bmpCompressedSize / 1024} КБ" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", "---------------------------------------------------" + "\r\n");
-                                    });
-
-                                    // Заменяем оригинальный BMP файл на сжатый JPEG
-                                    File.Copy(bmpTempFilePath, filePath, true); // true позволяет перезаписать файл
-                                    File.Delete(bmpTempFilePath); // Удаляем временный файл
-                                    continue;
-                                }
-
-
-
-
-
                                 else
-                                    continue;
-
-                                long compressedSize = new FileInfo(tempFilePath).Length;
-
-                                if (compressedSize < originalSize)
                                 {
-                                    File.Copy(tempFilePath, filePath, true); // Заменяем оригинал на сжатый
-                                    Application.Current.Dispatcher.Invoke(() =>
-                                    {
-                                        outputListBox.Items.Add($"{i}: {filePath}");
-                                        outputListBox.Items.Add($"Размер до: {originalSize / 1024} КБ");
-                                        outputListBox.Items.Add($"Размер после: {compressedSize / 1024} КБ");
-                                        File.AppendAllText("Log_image_compression.txt", $"{i}: {filePath}" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", $"Размер до: {originalSize / 1024} КБ" + "\r\n");
-                                        File.AppendAllText("Log_image_compression.txt", $"Размер после: {compressedSize / 1024} КБ" + "\r\n");
-
-                                    });
+                                    return;
                                 }
+                            }
+
+                            long compressedSize =
+                                new FileInfo(tempFilePath).Length;
+
+                            if (compressedSize < originalSize)
+                            {
+                                File.Copy(tempFilePath,filePath,true);
+
+                                int currentNumber =
+                                    Interlocked.Increment(ref kon);
 
                                 Application.Current.Dispatcher.Invoke(() =>
                                 {
-                                    outputListBox.Items.Add("---------------------------------------------------");
-                                    File.AppendAllText("Log_image_compression.txt", "---------------------------------------------------" + "\r\n");
+                                    outputListBox.Items.Add(@$"{currentNumber}:{filePath}");
+
+                                    outputListBox.Items.Add(
+                                        $"Размер до: {originalSize / 1024} КБ");
+
+                                    outputListBox.Items.Add(
+                                        $"Размер после: {compressedSize / 1024} КБ");
+
+                                    outputListBox.Items.Add(
+                                        "---------------------------------------------------");
                                 });
                             }
 
+                            if (File.Exists(tempFilePath))
+                            {
+                                File.Delete(tempFilePath);
+                            }
                         }
+                        catch (Exception ex)
+                        {
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                outputListBox.Items.Add(
+                                    $"Ошибка изображения:");
 
+                                outputListBox.Items.Add(filePath);
 
-                    }
+                                outputListBox.Items.Add(ex.Message);
 
-
-                    catch (Exception ex)
-                    {
-                        //Application.Current.Dispatcher.Invoke(() =>
-                        //{
-                        //    outputListBox.Items.Add($"{i}: Ошибка обработки файла: {filePath}");
-                        //    outputListBox.Items.Add($"Ошибка: {ex.Message}");
-                        //    outputListBox.Items.Add("---------------------------------------------------");
-                        //});
+                                outputListBox.Items.Add(
+                                    "---------------------------------------------------");
+                            });
+                        }
                     }
                 }
-            });
+                catch (Exception ex)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        outputListBox.Items.Add(
+                            $"Глобальная ошибка:");
 
-            
-            //Button2.IsEnabled = false;
+                        outputListBox.Items.Add(filePath);
+
+                        outputListBox.Items.Add(ex.Message);
+
+                        outputListBox.Items.Add(
+                            "---------------------------------------------------");
+                    });
+                }
+            });
         }
 
     }

@@ -16,12 +16,12 @@
 
         <Button x:Name="Button1" Content="Добавить путь" 
                 HorizontalAlignment="Left" VerticalAlignment="Top" 
-                Margin="10,5,0,0" Width="94" Height="26" 
-                Click="Button_Click" Grid.Column="0" Grid.Row="0" Grid.RowSpan="3"/>
+                Margin="91,4,0,0" Width="94" Height="26" 
+                Click="Button_Click" Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Grid.ColumnSpan="2"/>
 
 
         <ListBox x:Name="ListBox1"
-         Margin="763,35,69,1"
+         Margin="862,35,74,1"
          SelectionMode="Single"
          IsHitTestVisible="True"
          Focusable="False" Grid.Row="2" Grid.Column="1" RenderTransformOrigin="0.48,0.432">
@@ -38,10 +38,10 @@
 
         <Button x:Name="Button2" Content="Выполнить сжатие" 
                 HorizontalAlignment="Left" VerticalAlignment="Top" 
-                Margin="5,5,0,0" Width="119" Height="26" 
+                Margin="1223,4,0,0" Width="119" Height="26" 
                 Click="Button_Click_2" Grid.Column="1" Grid.Row="2"/>
         <ListBox x:Name="ListBox2"
-            Margin="10,35,1193,1"
+            Margin="10,35,1158,1"
             SelectionMode="Single"
             IsHitTestVisible="True"
             SelectionChanged="ListBox2_SelectionChanged"
@@ -53,14 +53,14 @@
                 </Style>
             </ListBox.ItemContainerStyle>
 
-            
+
         </ListBox>
         <Button x:Name="Button3" Content="Очистить пути" 
             HorizontalAlignment="Left" VerticalAlignment="Top" 
-            Margin="129,5,0,0" Width="94" Height="26" 
+            Margin="444,5,0,0" Width="94" Height="26" 
             Click="Button3_Click" Grid.Column="1" Grid.Row="0" Grid.RowSpan="3"/>
         <ListBox x:Name="ListBox3"
-            Margin="223,35,658,1"
+            Margin="362,35,658,1"
             SelectionMode="Single"
             IsHitTestVisible="True"
             Focusable="False" Grid.Row="2" Grid.Column="1" RenderTransformOrigin="0.25,0.482">
